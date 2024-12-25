@@ -1,12 +1,8 @@
-const isPlayer = (arg: any): arg is Player => {
-  return (
-    typeof arg === "object" &&
-    Object.keys(arg).length === 2 &&
-    typeof arg.id === "number" &&
-    typeof arg.name === "string"
-  );
+const isPlayer = (arg: unknown): arg is Player => {
+  const record = arg as Record<keyof Player, unknown>;
+  return typeof record.id === "number" && typeof record.name === "string";
 };
 
-export const isPlayers = (arg: any): arg is Player[] => {
+export const isPlayers = (arg: unknown): arg is Player[] => {
   return Array.isArray(arg) && arg.every(isPlayer);
 };
