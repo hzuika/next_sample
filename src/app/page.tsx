@@ -7,19 +7,34 @@ import { useEffect, useState } from "react";
 import localforage from "localforage";
 import { isPlayers } from "@/lib/isPlayers";
 
-export interface DeletePlayerConfirmDialogProps {
-  isOpened: boolean;
-  deletesPlayer: boolean;
-  onClose: (deletesPlayer: boolean) => void;
+const makeID = () => {
+  return crypto.randomUUID();
 }
+
+const GHOST_PLAYER: Player = { name: "不在", id: makeID(), winCount: 0 };
 
 export default function Home() {
   const [newPlayerName, setNewPlayerName] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
 
-  const makeID = () => {
-    return crypto.randomUUID();
+  const isExistedPair = (playerID0: string, playerID1: string) => {
+    for (let match of matches) {
+      for (let pair of match.pairList) {
+        if (pair.leftPlayerID === playerID0) {
+          if (pair.rightPlayerID === playerID1) {
+            return true;
+          }
+        }
+
+        if (pair.rightPlayerID === playerID1) {
+          if (pair.leftPlayerID === playerID0) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 
   const getPlayerById = (id: string) => {
@@ -27,6 +42,10 @@ export default function Home() {
   }
 
   const getPlayerName = (id: string) => {
+    if (id === GHOST_PLAYER.id) {
+      return GHOST_PLAYER.name;
+    }
+
     const player = getPlayerById(id);
     if (player) {
       return player.name;
@@ -52,6 +71,7 @@ export default function Home() {
 
     setPlayers((players) => [...players, newPlayer]);
     setNewPlayerName("");
+    setMatches([]);
   };
 
   const onChangePlayerName = (id: string, name: string) => {
@@ -82,17 +102,34 @@ export default function Home() {
     });
 
     const newMatch: Match = { pairList: [], id: makeID() };
-    const pairCount = Math.ceil(sortedPlayers.length / 2);
-    for (let pairIndex = 0; pairIndex < pairCount; ++pairIndex) {
-      const leftIndex = pairIndex * 2;
-      const rightIndex = leftIndex + 1;
-      const left = sortedPlayers[leftIndex];
-      const right = sortedPlayers[rightIndex];
-      const pair: Pair = { leftPlayerID: left.id, rightPlayerID: right.id, id: makeID() };
-      newMatch.pairList.push(pair);
+
+    while (sortedPlayers.length > 0) {
+      const left = sortedPlayers.shift();
+      if (left) {
+        if (sortedPlayers.length > 0) {
+          let index = 0;
+          for (; index < sortedPlayers.length; ++index) {
+            const rightPlayer = sortedPlayers[index];
+            if (!isExistedPair(left.id, rightPlayer.id)) {
+              const pair: Pair = { leftPlayerID: left.id, rightPlayerID: rightPlayer.id, id: makeID() };
+              newMatch.pairList.push(pair);
+              break;
+            }
+          }
+          sortedPlayers.splice(index, 1);
+        } else {
+          // プレイヤー数が奇数の場合の最後．
+          const pair: Pair = { leftPlayerID: left.id, rightPlayerID: GHOST_PLAYER.id, id: makeID() };
+          newMatch.pairList.push(pair);
+          console.assert(!isExistedPair(pair.leftPlayerID, pair.rightPlayerID));
+          break;
+        }
+      }
     }
 
-    setMatches((matches) => [...matches, newMatch]);
+    if (newMatch.pairList.length > 0) {
+      setMatches((matches) => [...matches, newMatch]);
+    }
   };
 
   const STORAGE_KEY = "swiss-draw-players";
