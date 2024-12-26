@@ -1,5 +1,5 @@
 "use client";
-import { Button, Container, List, ListItem, ListSubheader, Paper, TextField } from "@mui/material";
+import { Button, Container, Dialog, DialogTitle, List, ListItem, ListSubheader, Paper, TextField, Typography } from "@mui/material";
 
 import IconButton from '@mui/material/IconButton';
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -7,9 +7,33 @@ import { useEffect, useState } from "react";
 import localforage from "localforage";
 import { isPlayers } from "@/lib/isPlayers";
 
+export interface DeletePlayerConfirmDialogProps {
+  isOpened: boolean;
+  deletesPlayer: boolean;
+  onClose: (deletesPlayer: boolean) => void;
+}
+
 export default function Home() {
   const [newPlayerName, setNewPlayerName] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
+
+  const makeID = () => {
+    return crypto.randomUUID();
+  }
+
+  const getPlayerById = (id: string) => {
+    return players.find((player) => player.id === id);
+  }
+
+  const getPlayerName = (id: string) => {
+    const player = getPlayerById(id);
+    if (player) {
+      return player.name;
+    } else {
+      return "";
+    }
+  }
 
   const onChangeNewPlayerName = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewPlayerName(e.target.value);
@@ -22,14 +46,15 @@ export default function Home() {
 
     const newPlayer: Player = {
       name: newPlayerName,
-      id: new Date().getTime(),
+      id: makeID(),
+      winCount: 0,
     };
 
     setPlayers((players) => [...players, newPlayer]);
     setNewPlayerName("");
   };
 
-  const onChangePlayerName = (id: number, name: string) => {
+  const onChangePlayerName = (id: string, name: string) => {
     setPlayers((players) => {
       const newPlayers = players.map((player) => {
         if (player.id === id) {
@@ -43,9 +68,31 @@ export default function Home() {
   };
 
   const onDeletePlayer = (index: number) => {
+    // TODO: 削除前の確認メッセージを表示する or 削除対象のプレイヤーの試合だけ削除する．
+    // 削除対象のプレイヤーの試合だけ削除すると，勝ち数と合わなくなってややこしくなりそうなので，全削除が無難だと思う．
     const newPlayers = [...players];
     newPlayers.splice(index, 1);
     setPlayers(newPlayers);
+    setMatches([]);
+  };
+
+  const onMakeMatch = () => {
+    const sortedPlayers = players.toSorted((a, b) => {
+      return a.winCount - b.winCount;
+    });
+
+    const newMatch: Match = { pairList: [], id: makeID() };
+    const pairCount = Math.ceil(sortedPlayers.length / 2);
+    for (let pairIndex = 0; pairIndex < pairCount; ++pairIndex) {
+      const leftIndex = pairIndex * 2;
+      const rightIndex = leftIndex + 1;
+      const left = sortedPlayers[leftIndex];
+      const right = sortedPlayers[rightIndex];
+      const pair: Pair = { leftPlayerID: left.id, rightPlayerID: right.id, id: makeID() };
+      newMatch.pairList.push(pair);
+    }
+
+    setMatches((matches) => [...matches, newMatch]);
   };
 
   const STORAGE_KEY = "swiss-draw-players";
@@ -101,6 +148,34 @@ export default function Home() {
           })
           }
         </List>
+
+        <Button
+          variant="contained"
+          onClick={onMakeMatch}
+        >
+          組み合わせを決める
+        </Button>
+
+        {matches.map((match, matchIndex) => {
+          return (
+            <List
+              key={match.id}
+              subheader={
+                <ListSubheader component="div" id="match-list-subheader">
+                  {`${matchIndex}試合目`}
+                </ListSubheader>
+              }
+            >
+              {match.pairList.map((pair) => {
+                return (
+                  <ListItem key={pair.id}>
+                    {`${getPlayerName(pair.leftPlayerID)} vs ${getPlayerName(pair.rightPlayerID)}`}
+                  </ListItem>
+                )
+              })}
+            </List>
+          )
+        })}
 
       </Paper>
     </Container>

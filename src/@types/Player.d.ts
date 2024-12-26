@@ -1,4 +1,5 @@
 declare type Player = {
   name: string;
-  readonly id: number;
+  readonly id: string;
+  winCount: number;
 };
