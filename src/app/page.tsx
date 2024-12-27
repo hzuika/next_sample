@@ -20,6 +20,11 @@ export default function Home() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [restMatches, setRestMatches] = useState<Match[]>([]);
 
+  const clearMatches = () => {
+    setMatches([]);
+    setRestMatches([]);
+  }
+
   const getPlayerById = (id: string) => {
     return players.find((player) => player.id === id);
   }
@@ -50,6 +55,23 @@ export default function Home() {
     return count;
   }
 
+  const getPlayerWinCountUntilMatchID = (playerID: string, matchID: string) => {
+    let count = 0;
+    for (const match of matches) {
+      if (match.id === matchID) {
+        break;
+      }
+
+      for (const pair of match.pairList) {
+        if (pair.winnerID === playerID) {
+          count += 1;
+          break;
+        }
+      }
+    }
+    return count;
+  }
+
   const handleChangeNewPlayerName = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewPlayerName(e.target.value);
   };
@@ -66,7 +88,7 @@ export default function Home() {
 
     setPlayers((players) => [...players, newPlayer]);
     setNewPlayerName("");
-    setMatches([]);
+    clearMatches();
   };
 
   const handleChangePlayerName = (id: string, name: string) => {
@@ -88,7 +110,7 @@ export default function Home() {
     const newPlayers = [...players];
     newPlayers.splice(index, 1);
     setPlayers(newPlayers);
-    setMatches([]);
+    clearMatches();
   };
 
   const makeAllMatches = () => {
@@ -120,6 +142,7 @@ export default function Home() {
     };
 
     const diffSumArray = matches.map(calcWinCountDiffSum);
+
     const minIndex = diffSumArray.indexOf(diffSumArray.reduce((a, b) => Math.min(a, b)));
     return minIndex;
   }
@@ -246,13 +269,13 @@ export default function Home() {
                   <ListItem key={pair.id}>
                     <ToggleButtonGroup color="primary" value={pair.winnerID} exclusive onChange={(_, newWinnerID) => handleWin(newWinnerID, match.id, pair.id)}>
                       <ToggleButton value={pair.leftPlayerID}>
-                        {getPlayerName(pair.leftPlayerID)}
+                        {`${getPlayerName(pair.leftPlayerID)} (${getPlayerWinCountUntilMatchID(pair.leftPlayerID, match.id)})`}
                       </ToggleButton>
                       <Typography>
                         VS
                       </Typography>
                       <ToggleButton value={pair.rightPlayerID}>
-                        {getPlayerName(pair.rightPlayerID)}
+                        {`${getPlayerName(pair.rightPlayerID)} (${getPlayerWinCountUntilMatchID(pair.rightPlayerID, match.id)})`}
                       </ToggleButton>
                     </ToggleButtonGroup>
                   </ListItem>
