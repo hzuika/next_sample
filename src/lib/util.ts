@@ -5,3 +5,7 @@ export const isEven = <T>(array: T[]) => {
 export const shuffle = <T>(array: T[]) => {
   return array.toSorted(() => Math.random() - 0.5);
 };
+
+export const makeID = () => {
+  return crypto.randomUUID();
+};

@@ -7,12 +7,8 @@ import { useEffect, useState } from "react";
 import localforage from "localforage";
 import { isPlayers } from "@/lib/isPlayers";
 import { roundRobin } from "@/lib/roundRobin";
-import { isEven, shuffle } from "@/lib/util";
+import { isEven, shuffle, makeID } from "@/lib/util";
 import { getSide, getWinnerID } from "@/lib/pair";
-
-const makeID = () => {
-  return crypto.randomUUID();
-}
 
 const GHOST_PLAYER: Player = { name: "不在", id: makeID() as PlayerId };
 
