@@ -7,11 +7,11 @@ import { useEffect, useState } from "react";
 import localforage from "localforage";
 import { isPlayers } from "@/lib/isPlayers";
 import { roundRobin } from "@/lib/roundRobin";
-import { isEven, shuffle, makeID } from "@/lib/util";
-import { getSide, getWinnerID } from "@/lib/pair";
+import { isEven, shuffle, makeId } from "@/lib/util";
+import { getOpponentId, getSide, getWinnerId } from "@/lib/pair";
 import { indigo } from "@mui/material/colors";
 
-const GHOST_PLAYER: Player = { name: "不在", id: makeID() as PlayerId };
+const GHOST_PLAYER: Player = { name: "不在", id: makeId() as PlayerId };
 
 const theme = createTheme({
   typography: {
@@ -59,15 +59,15 @@ export default function Home() {
     }
   }
 
-  const getPlayerWinCount = (playerID: PlayerId) => {
-    if (playerID === GHOST_PLAYER.id) {
+  const getPlayerWinCount = (playerId: PlayerId) => {
+    if (playerId === GHOST_PLAYER.id) {
       return 0;
     }
 
     let count = 0;
     for (const match of matches) {
       for (const pair of match.pairList) {
-        if (getWinnerID(pair) === playerID) {
+        if (getWinnerId(pair) === playerId) {
           count += 1;
           break;
         }
@@ -81,13 +81,9 @@ export default function Home() {
     let count = 0;
     for (const match of matches) {
       for (const pair of match.pairList) {
-        if (pair.left === id) {
-          const opponentID = pair.right;
-          count += getPlayerWinCount(opponentID);
-          break;
-        } else if (pair.right === id) {
-          const opponentID = pair.left;
-          count += getPlayerWinCount(opponentID);
+        const opponentId = getOpponentId(pair, id);
+        if (opponentId) {
+          count += getPlayerWinCount(opponentId);
           break;
         }
       }
@@ -96,21 +92,17 @@ export default function Home() {
   }
 
   // 勝った試合の対戦相手の勝ち数を取得する.
-  const getDefeatedOpponentWinCount = (playerID: string) => {
+  const getDefeatedOpponentWinCount = (playerId: PlayerId) => {
     let count = 0;
     for (const match of matches) {
       for (const pair of match.pairList) {
-        if (getWinnerID(pair) === playerID) {
-          if (pair.left === playerID) {
-            const opponentID = pair.right;
-            count += getPlayerWinCount(opponentID);
-            break;
-          } else if (pair.right === playerID) {
-            const opponentID = pair.left;
-            count += getPlayerWinCount(opponentID);
+        if (getWinnerId(pair) === playerId) {
+          const opponentId = getOpponentId(pair, playerId);
+          if (opponentId) {
+            count += getPlayerWinCount(opponentId);
             break;
           } else {
-            console.assert(false, "Pairの不正な値");
+            console.assert(false);
           }
         }
       }
@@ -119,15 +111,15 @@ export default function Home() {
   }
 
   // 特定の試合より前の勝ち数を取得する。
-  const getPlayerWinCountUntilMatchID = (playerID: string, matchID: string) => {
+  const getPlayerWinCountUntilMatchId = (playerId: PlayerId, matchId: MatchId) => {
     let count = 0;
     for (const match of matches) {
-      if (match.id === matchID) {
+      if (match.id === matchId) {
         break;
       }
 
       for (const pair of match.pairList) {
-        if (getWinnerID(pair) === playerID) {
+        if (getWinnerId(pair) === playerId) {
           count += 1;
           break;
         }
@@ -139,7 +131,7 @@ export default function Home() {
   const handleAddPlayer = () => {
     const newPlayer: Player = {
       name: "",
-      id: makeID() as PlayerId,
+      id: makeId() as PlayerId,
     };
 
     setPlayers((players) => [...players, newPlayer]);
@@ -147,7 +139,7 @@ export default function Home() {
     setRequestAutoFocus(true);
   };
 
-  const handleChangePlayerName = (id: string, name: string) => {
+  const handleChangePlayerName = (id: PlayerId, name: string) => {
     setPlayers((players) => {
       const newPlayers = players.map((player) => {
         if (player.id === id) {
@@ -181,11 +173,11 @@ export default function Home() {
           left: evenPlayers[indexPair[0]].id,
           right: evenPlayers[indexPair[1]].id,
           winner: "none",
-          id: makeID() as PairId
+          id: makeId() as PairId
         };
         return pair;
       });
-      const match: Match = { pairList: pairList, id: makeID() as MatchId };
+      const match: Match = { pairList: pairList, id: makeId() as MatchId };
       return match;
     })
   }
@@ -256,17 +248,17 @@ export default function Home() {
   };
 
   const handleWin = (
-    newWinnerID: PlayerId,
-    matchID: MatchId,
-    pairID: PairId,
+    newWinnerId: PlayerId,
+    matchId: MatchId,
+    pairId: PairId,
   ) => {
     setMatches((prevMatches): Match[] => {
       return prevMatches.map((match) => {
-        if (match.id === matchID) {
+        if (match.id === matchId) {
           return {
             ...match, pairList: match.pairList.map((pair) => {
-              if (pair.id === pairID) {
-                return { ...pair, winner: getSide(pair, newWinnerID) };
+              if (pair.id === pairId) {
+                return { ...pair, winner: getSide(pair, newWinnerId) };
               } else {
                 return pair;
               }
@@ -408,10 +400,10 @@ export default function Home() {
                 }
               >
                 {match.pairList.map((pair) => {
-                  const PlayerButton = ({ playerID }: { playerID: PlayerId }) => {
+                  const PlayerButton = ({ playerId: playerId }: { playerId: PlayerId }) => {
                     return (
-                      <ToggleButton color="primary" fullWidth value={playerID} selected={getWinnerID(pair) === playerID} onChange={(_, newWinnerID) => handleWin(newWinnerID, match.id, pair.id)}>
-                        {`${getPlayerName(playerID)} (${getPlayerWinCountUntilMatchID(playerID, match.id)})`}
+                      <ToggleButton color="primary" fullWidth value={playerId} selected={getWinnerId(pair) === playerId} onChange={(_, newWinnerId) => handleWin(newWinnerId, match.id, pair.id)}>
+                        {`${getPlayerName(playerId)} (${getPlayerWinCountUntilMatchId(playerId, match.id)})`}
                       </ToggleButton>
                     )
                   };
@@ -421,7 +413,7 @@ export default function Home() {
                       <Box sx={{ width: "100%" }}>
                         <Grid2 container spacing={2} alignItems="baseline">
                           <Grid2 size="grow">
-                            <PlayerButton playerID={pair.left} />
+                            <PlayerButton playerId={pair.left} />
                           </Grid2>
 
                           <Grid2 size="auto">
@@ -431,7 +423,7 @@ export default function Home() {
                           </Grid2>
 
                           <Grid2 size="grow">
-                            <PlayerButton playerID={pair.right} />
+                            <PlayerButton playerId={pair.right} />
                           </Grid2>
                         </Grid2>
                       </Box>

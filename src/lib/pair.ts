@@ -1,4 +1,4 @@
-export const getWinnerID = (pair: Pair) => {
+export const getWinnerId = (pair: Pair) => {
   switch (pair.winner) {
     case "left":
       return pair.left;
@@ -16,5 +16,15 @@ export const getSide = (pair: Pair, id: PlayerId): Winner => {
     return "right";
   } else {
     return "none";
+  }
+};
+
+export const getOpponentId = (pair: Pair, id: PlayerId) => {
+  if (pair.left === id) {
+    return pair.right;
+  } else if (pair.right === id) {
+    return pair.left;
+  } else {
+    return undefined;
   }
 };
