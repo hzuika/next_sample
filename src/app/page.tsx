@@ -1,5 +1,5 @@
 "use client";
-import { Box, Button, Container, Grid2, List, ListItem, ListSubheader, Paper, Stack, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, TextField, ThemeProvider, ToggleButton, Typography, createTheme } from "@mui/material";
+import { Box, Button, Container, Grid2, List, ListItem, ListSubheader, Paper, Stack, Tab, Tabs, TextField, ThemeProvider, ToggleButton, Typography, createTheme } from "@mui/material";
 
 import IconButton from '@mui/material/IconButton';
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -11,7 +11,7 @@ import { isEven, shuffle, makeId, isEmpty } from "@/lib/util";
 import { getSide, getWinnerId } from "@/lib/pair";
 import { indigo } from "@mui/material/colors";
 import { GHOST_PLAYER, getHelperTextForNameValidation, getPlayerName, isValidPlayerName } from "@/lib/player";
-import { getPlayerWinCountUntilMatchId, getPlayerWinCountWithGhost, swissDraw } from "@/lib/match";
+import { getPlayerWinCountUntilMatchId, swissDraw } from "@/lib/match";
 import { RankTable } from "@/components/rankTable";
 
 const theme = createTheme({
