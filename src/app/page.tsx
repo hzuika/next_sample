@@ -161,6 +161,34 @@ export default function Home() {
     clearMatches();
   };
 
+  const isDuplicated = (name: string) => {
+    let i = 0;
+    players.forEach((player) => {
+      if (player.name === name) {
+        i += 1;
+      }
+    })
+    return i > 1;
+  };
+
+  const isValidPlayerName = (name: string): NameValidation => {
+    if (isEmpty(name)) {
+      return "empty";
+    }
+    if (isDuplicated(name)) {
+      return "duplicated";
+    }
+    return "valid";
+  }
+
+  const getHelperTextForNameValidation = (name: string) => {
+    switch (isValidPlayerName(name)) {
+      case "duplicated": return "すでに使用されています";
+      case "empty": return "";
+      case "valid": return "";
+    }
+  }
+
   const makeAllMatches = () => {
     // 参加者が奇数の場合は、存在しない参加者(Ghost Player)を追加して偶数にする。
     // Ghost Player を配列の先頭に追加すると、Round Robin で先頭要素が固定される。
@@ -317,7 +345,8 @@ export default function Home() {
                       onChange={(e) => handleChangePlayerName(player.id, e.target.value)}
                       autoFocus={(index === (players.length - 1)) && requestAutoFocus}
                       placeholder="参加者名を入力"
-                      error={isEmpty(player.name)}
+                      helperText={getHelperTextForNameValidation(player.name)}
+                      error={isValidPlayerName(player.name) !== "valid"}
                       fullWidth
                     />
                     <IconButton
