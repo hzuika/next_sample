@@ -321,13 +321,15 @@ export default function Home() {
             )
           })
           }
-          <Button
-            variant="outlined"
-            onClick={handleAddPlayer}
-            fullWidth
-          >
-            ＋参加者を追加
-          </Button>
+          <ListItem>
+            <Button
+              variant="outlined"
+              onClick={handleAddPlayer}
+              fullWidth
+            >
+              ＋参加者を追加
+            </Button>
+          </ListItem>
         </List>
 
         <hr />
