@@ -1,5 +1,5 @@
 "use client";
-import { Box, Button, Container, Grid2, List, ListItem, ListSubheader, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, ThemeProvider, ToggleButton, Typography, createTheme } from "@mui/material";
+import { Box, Button, Container, Grid2, List, ListItem, ListSubheader, Paper, Stack, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, TextField, ThemeProvider, ToggleButton, Typography, createTheme } from "@mui/material";
 
 import IconButton from '@mui/material/IconButton';
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -8,10 +8,11 @@ import localforage from "localforage";
 import { isPlayers } from "@/lib/isPlayers";
 import { roundRobin } from "@/lib/roundRobin";
 import { isEven, shuffle, makeId, isEmpty } from "@/lib/util";
-import { getOpponentId, getSide, getWinnerId } from "@/lib/pair";
+import { getSide, getWinnerId } from "@/lib/pair";
 import { indigo } from "@mui/material/colors";
-
-const GHOST_PLAYER: Player = { name: "不在", id: makeId() as PlayerId };
+import { GHOST_PLAYER, getHelperTextForNameValidation, getPlayerName, isValidPlayerName } from "@/lib/player";
+import { getPlayerWinCountUntilMatchId, getPlayerWinCountWithGhost, swissDraw } from "@/lib/match";
+import { RankTable } from "@/components/rankTable";
 
 const theme = createTheme({
   typography: {
@@ -31,10 +32,16 @@ const theme = createTheme({
   }
 });
 
+
+;
+
 export default function Home() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [restMatches, setRestMatches] = useState<Match[]>([]);
+
+  const [tab, setTab] = useState(0);
+
   const [requestAutoFocus, setRequestAutoFocus] = useState(false);
 
   const [requestScrollEnd, setRequestScrollEnd] = useState(true);
@@ -47,92 +54,6 @@ export default function Home() {
   const clearMatches = () => {
     setMatches([]);
     setRestMatches([]);
-  }
-
-  const getPlayerById = (id: PlayerId) => {
-    if (id === GHOST_PLAYER.id) {
-      return GHOST_PLAYER;
-    } else {
-      return players.find((player) => player.id === id);
-    }
-  }
-
-  const getPlayerName = (id: PlayerId) => {
-    const player = getPlayerById(id);
-    if (player) {
-      return player.name;
-    } else {
-      return "";
-    }
-  }
-
-  const getPlayerWinCount = (playerId: PlayerId) => {
-    if (playerId === GHOST_PLAYER.id) {
-      return 0;
-    }
-
-    let count = 0;
-    for (const match of matches) {
-      for (const pair of match.pairList) {
-        if (getWinnerId(pair) === playerId) {
-          count += 1;
-          break;
-        }
-      }
-    }
-    return count;
-  }
-
-  // 対戦相手の勝ち数を取得する.
-  const getOpponentWinCount = (id: PlayerId) => {
-    let count = 0;
-    for (const match of matches) {
-      for (const pair of match.pairList) {
-        const opponentId = getOpponentId(pair, id);
-        if (opponentId) {
-          count += getPlayerWinCount(opponentId);
-          break;
-        }
-      }
-    }
-    return count;
-  }
-
-  // 勝った試合の対戦相手の勝ち数を取得する.
-  const getDefeatedOpponentWinCount = (playerId: PlayerId) => {
-    let count = 0;
-    for (const match of matches) {
-      for (const pair of match.pairList) {
-        if (getWinnerId(pair) === playerId) {
-          const opponentId = getOpponentId(pair, playerId);
-          if (opponentId) {
-            count += getPlayerWinCount(opponentId);
-            break;
-          } else {
-            console.assert(false);
-          }
-        }
-      }
-    }
-    return count;
-  }
-
-  // 特定の試合より前の勝ち数を取得する。
-  const getPlayerWinCountUntilMatchId = (playerId: PlayerId, matchId: MatchId) => {
-    let count = 0;
-    for (const match of matches) {
-      if (match.id === matchId) {
-        break;
-      }
-
-      for (const pair of match.pairList) {
-        if (getWinnerId(pair) === playerId) {
-          count += 1;
-          break;
-        }
-      }
-    }
-    return count;
   }
 
   const handleAddPlayer = () => {
@@ -168,33 +89,6 @@ export default function Home() {
     clearMatches();
   };
 
-  const isDuplicated = (name: string) => {
-    let i = 0;
-    players.forEach((player) => {
-      if (player.name === name) {
-        i += 1;
-      }
-    })
-    return i > 1;
-  };
-
-  const isValidPlayerName = (name: string): NameValidation => {
-    if (isEmpty(name)) {
-      return "empty";
-    }
-    if (isDuplicated(name)) {
-      return "duplicated";
-    }
-    return "valid";
-  }
-
-  const getHelperTextForNameValidation = (name: string) => {
-    switch (isValidPlayerName(name)) {
-      case "duplicated": return "すでに使用されています";
-      case "empty": return "";
-      case "valid": return "";
-    }
-  }
 
   const makeAllMatches = () => {
     // 参加者が奇数の場合は、存在しない参加者(Ghost Player)を追加して偶数にする。
@@ -215,33 +109,6 @@ export default function Home() {
       const match: Match = { pairList: pairList, id: makeId() as MatchId };
       return match;
     })
-  }
-
-  const swissDraw = (matches: Match[]) => {
-    const getPlayerWinCountForSwissDraw = (id: PlayerId) => {
-      if (id === GHOST_PLAYER.id) {
-        // スイス式を算出するときだけ、Ghost Playerの勝数を0~試合数のランダムな値に変えたほうが良いかもしれない.
-        return 0;
-      } else {
-        return getPlayerWinCount(id);
-      }
-    };
-
-    const calcWinCountDiffSum = (match: Match) => {
-      let sum = 0;
-      for (const pair of match.pairList) {
-        const left = getPlayerWinCountForSwissDraw(pair.left);
-        const right = getPlayerWinCountForSwissDraw(pair.right);
-        const diff = Math.abs(left - right);
-        sum += diff;
-      }
-      return sum;
-    };
-
-    const diffSumArray = matches.map(calcWinCountDiffSum);
-
-    const minIndex = diffSumArray.indexOf(diffSumArray.reduce((a, b) => Math.min(a, b)));
-    return minIndex;
   }
 
   const handleMakeMatch = () => {
@@ -305,7 +172,11 @@ export default function Home() {
           return {
             ...match, pairList: match.pairList.map((pair) => {
               if (pair.id === pairId) {
-                return { ...pair, winner: getSide(pair, newWinnerId) };
+                if (getWinnerId(pair) === newWinnerId) {
+                  return { ...pair, winner: "none" };
+                } else {
+                  return { ...pair, winner: getSide(pair, newWinnerId) };
+                }
               } else {
                 return pair;
               }
@@ -318,20 +189,9 @@ export default function Home() {
     })
   }
 
-  const rankedPlayers = players.toSorted((a, b) => {
-    const winDiff = getPlayerWinCount(b.id) - getPlayerWinCount(a.id);
-    if (winDiff !== 0) {
-      return winDiff;
-    }
-
-    const opponentWinDiff = getOpponentWinCount(b.id) - getOpponentWinCount(a.id);
-    if (opponentWinDiff !== 0) {
-      return opponentWinDiff;
-    }
-
-    const defeatedOpponentWinDiff = getDefeatedOpponentWinCount(b.id) - getDefeatedOpponentWinCount(a.id);
-    return defeatedOpponentWinDiff;
-  })
+  const handleChangeTab = (_: React.SyntheticEvent, newTab: number) => {
+    setTab(newTab);
+  };
 
   // ローカルストレージへの保存.
   const STORAGE_KEY = "swiss-draw-players";
@@ -364,8 +224,8 @@ export default function Home() {
                       onChange={(e) => handleChangePlayerName(player.id, e.target.value)}
                       autoFocus={(index === (players.length - 1)) && requestAutoFocus}
                       placeholder="参加者名を入力"
-                      helperText={getHelperTextForNameValidation(player.name)}
-                      error={isValidPlayerName(player.name) !== "valid"}
+                      helperText={getHelperTextForNameValidation(player.name, players)}
+                      error={isValidPlayerName(player.name, players) !== "valid"}
                       fullWidth
                     />
                     <IconButton
@@ -392,44 +252,25 @@ export default function Home() {
 
           <hr />
 
-          <Typography>
-            順位表
-          </Typography>
-          <TableContainer>
-            <Table>
-              <caption>全点 = 対戦相手の勝数の合計。勝点 = 勝った対戦相手の勝数の合計。</caption>
-              <TableHead>
-                <TableRow>
-                  <TableCell>順位</TableCell>
-                  <TableCell>名前</TableCell>
-                  <TableCell align="right">勝数</TableCell>
-                  <TableCell align="right">全点</TableCell>
-                  <TableCell align="right">勝点</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rankedPlayers.map((player, index) => {
-                  return (
-                    <TableRow key={player.id}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>{player.name}</TableCell>
-                      <TableCell align="right">{getPlayerWinCount(player.id)}</TableCell>
-                      <TableCell align="right">{getOpponentWinCount(player.id)}</TableCell>
-                      <TableCell align="right">{getDefeatedOpponentWinCount(player.id)}</TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <Box sx={{ width: "100%" }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Tabs value={tab} onChange={handleChangeTab} centered>
+                <Tab label="対戦表" sx={{ flexGrow: 1 }} />
+                <Tab label="順位表" sx={{ flexGrow: 1 }} />
+              </Tabs>
+            </Box>
+          </Box>
+
+          <RankTable players={players} matches={matches} />
 
           <hr />
+
 
           <Typography>
             対戦表
           </Typography>
 
-          <List subheader={<ListSubheader>勝者の名前をクリックします。</ListSubheader>}>
+          <List subheader={<ListSubheader>勝者の名前をクリックします。もう一度クリックするとリセットされます。</ListSubheader>}>
             {matches.map((match, matchIndex) => {
               return (
                 <ListItem key={match.id}>
@@ -440,7 +281,7 @@ export default function Home() {
                         const PlayerButton = ({ playerId: playerId }: { playerId: PlayerId }) => {
                           return (
                             <ToggleButton color="primary" fullWidth value={playerId} selected={getWinnerId(pair) === playerId} onChange={(_, newWinnerId) => handleWin(newWinnerId, match.id, pair.id)}>
-                              {`${(getWinnerId(pair) === playerId) ? "◯" : "✗"} ${getPlayerName(playerId)} (${getPlayerWinCountUntilMatchId(playerId, match.id)})`}
+                              {`${(pair.winner === "none" ? "" : (getWinnerId(pair) === playerId) ? "◯" : "✗")} ${getPlayerName(playerId, [...players, GHOST_PLAYER])} (${getPlayerWinCountUntilMatchId(playerId, match.id, matches)})`}
                             </ToggleButton>
                           )
                         };
