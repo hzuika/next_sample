@@ -429,58 +429,69 @@ export default function Home() {
             対戦表
           </Typography>
 
-          {matches.map((match, matchIndex) => {
-            return (
-              <List
-                key={match.id}
-                subheader={
-                  <ListSubheader component="div" id="match-list-subheader">
-                    {`${matchIndex + 1}試合目`}
-                  </ListSubheader>
-                }
-              >
-                {match.pairList.map((pair) => {
-                  const PlayerButton = ({ playerId: playerId }: { playerId: PlayerId }) => {
-                    return (
-                      <ToggleButton color="primary" fullWidth value={playerId} selected={getWinnerId(pair) === playerId} onChange={(_, newWinnerId) => handleWin(newWinnerId, match.id, pair.id)}>
-                        {`${getPlayerName(playerId)} (${getPlayerWinCountUntilMatchId(playerId, match.id)})`}
-                      </ToggleButton>
-                    )
-                  };
+          <List subheader={<ListSubheader>勝者の名前をクリックします。</ListSubheader>}>
+            {matches.map((match, matchIndex) => {
+              return (
+                <ListItem key={match.id}>
+                  <Stack sx={{ width: "100%" }}>
+                    <Typography>{`${matchIndex + 1}試合目`}</Typography>
+                    <List>
+                      {match.pairList.map((pair) => {
+                        const PlayerButton = ({ playerId: playerId }: { playerId: PlayerId }) => {
+                          return (
+                            <ToggleButton color="primary" fullWidth value={playerId} selected={getWinnerId(pair) === playerId} onChange={(_, newWinnerId) => handleWin(newWinnerId, match.id, pair.id)}>
+                              {`${(getWinnerId(pair) === playerId) ? "◯" : "✗"} ${getPlayerName(playerId)} (${getPlayerWinCountUntilMatchId(playerId, match.id)})`}
+                            </ToggleButton>
+                          )
+                        };
 
-                  return (
-                    <ListItem key={pair.id}>
-                      <Box sx={{ width: "100%" }}>
-                        <Grid2 container spacing={2} alignItems="baseline">
-                          <Grid2 size="grow">
-                            <PlayerButton playerId={pair.left} />
-                          </Grid2>
+                        return (
+                          <ListItem key={pair.id}>
+                            <Box sx={{ width: "100%" }}>
+                              <Grid2 container spacing={2} alignItems="baseline">
+                                <Grid2 size="grow">
+                                  <PlayerButton playerId={pair.left} />
+                                </Grid2>
 
-                          <Grid2 size="auto">
-                            <Typography>
-                              VS
-                            </Typography>
-                          </Grid2>
+                                <Grid2 size="auto">
+                                  <Typography>
+                                    VS
+                                  </Typography>
+                                </Grid2>
 
-                          <Grid2 size="grow">
-                            <PlayerButton playerId={pair.right} />
-                          </Grid2>
-                        </Grid2>
-                      </Box>
-                    </ListItem>
-                  )
-                })}
-              </List>
-            )
-          })}
+                                <Grid2 size="grow">
+                                  <PlayerButton playerId={pair.right} />
+                                </Grid2>
+                              </Grid2>
+                            </Box>
+                          </ListItem>
+                        )
+                      })}
+                    </List>
 
-          <Button
-            variant="contained"
-            onClick={handleMakeMatch}
-            fullWidth
-          >
-            組み合わせを決める
-          </Button>
+                  </Stack>
+                </ListItem>
+              )
+            })}
+          </List>
+
+          <Stack sx={{ width: "100%" }} spacing={2}>
+            <Button
+              variant="contained"
+              onClick={handleMakeMatch}
+            >
+              組み合わせを決める
+            </Button>
+
+            <Button
+              color="error"
+              variant="outlined"
+              onClick={() => clearMatches()}
+            >
+              対戦表を削除する
+            </Button>
+          </Stack>
+
 
           <div ref={scrollEndRef} />
         </Paper>
