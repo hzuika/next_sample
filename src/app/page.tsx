@@ -1,5 +1,5 @@
 "use client";
-import { Button, Container, List, ListItem, ListItemButton, ListSubheader, Paper, TextField } from "@mui/material";
+import { Button, Container, List, ListItem, ListItemButton, ListSubheader, Paper, TextField, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 
 import IconButton from '@mui/material/IconButton';
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -12,7 +12,7 @@ const makeID = () => {
   return crypto.randomUUID();
 }
 
-const GHOST_PLAYER: Player = { name: "不在", id: makeID(), winCount: 0 };
+const GHOST_PLAYER: Player = { name: "不在", id: makeID() };
 
 export default function Home() {
   const [newPlayerName, setNewPlayerName] = useState("");
@@ -37,13 +37,17 @@ export default function Home() {
     }
   }
 
-  const getPlayerWinCount = (id: string) => {
-    const player = getPlayerById(id);
-    if (player) {
-      return player.winCount;
-    } else {
-      return 0;
+  const getPlayerWinCount = (playerID: string) => {
+    let count = 0;
+    for (const match of matches) {
+      for (const pair of match.pairList) {
+        if (pair.winnerID === playerID) {
+          count += 1;
+          break;
+        }
+      }
     }
+    return count;
   }
 
   const handleChangeNewPlayerName = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,7 +62,6 @@ export default function Home() {
     const newPlayer: Player = {
       name: newPlayerName,
       id: makeID(),
-      winCount: 0,
     };
 
     setPlayers((players) => [...players, newPlayer]);
@@ -91,7 +94,12 @@ export default function Home() {
   const makeAllMatches = () => {
     return roundRobin(players.length).map((indexMatch) => {
       const pairList = indexMatch.map((indexPair) => {
-        const pair: Pair = { leftPlayerID: players[indexPair[0]].id, rightPlayerID: players[indexPair[1]].id, id: makeID() };
+        const pair: Pair = {
+          leftPlayerID: players[indexPair[0]].id,
+          rightPlayerID: players[indexPair[1]].id,
+          winnerID: "",
+          id: makeID()
+        };
         return pair;
       });
       const match: Match = { pairList: pairList, id: makeID() };
@@ -138,17 +146,28 @@ export default function Home() {
     setRestMatches(newRestMatches);
   };
 
-  const handleWin = (id: string) => {
-    setPlayers((players) => {
-      const newPlayers = players.map((player) => {
-        if (player.id === id) {
-          return { ...player, winCount: player.winCount += 1 };
+  const handleWin = (
+    newWinnerID: string,
+    matchID: string,
+    pairID: string,
+  ) => {
+    setMatches((prevMatches) => {
+      return prevMatches.map((match) => {
+        if (match.id === matchID) {
+          return {
+            ...match, pairList: match.pairList.map((pair) => {
+              if (pair.id === pairID) {
+                return { ...pair, winnerID: newWinnerID };
+              } else {
+                return pair;
+              }
+            })
+          };
         } else {
-          return player;
+          return match;
         }
-      });
-      return newPlayers;
-    });
+      })
+    })
   }
 
   const STORAGE_KEY = "swiss-draw-players";
@@ -218,23 +237,30 @@ export default function Home() {
               key={match.id}
               subheader={
                 <ListSubheader component="div" id="match-list-subheader">
-                  {`${matchIndex}試合目`}
+                  {`${matchIndex + 1}試合目`}
                 </ListSubheader>
               }
             >
               {match.pairList.map((pair) => {
                 return (
                   <ListItem key={pair.id}>
-                    <ListItemButton onClick={() => handleWin(pair.leftPlayerID)}>
-                      {`${getPlayerName(pair.leftPlayerID)} vs ${getPlayerName(pair.rightPlayerID)}`}
-                    </ListItemButton>
+                    <ToggleButtonGroup color="primary" value={pair.winnerID} exclusive onChange={(_, newWinnerID) => handleWin(newWinnerID, match.id, pair.id)}>
+                      <ToggleButton value={pair.leftPlayerID}>
+                        {getPlayerName(pair.leftPlayerID)}
+                      </ToggleButton>
+                      <Typography>
+                        VS
+                      </Typography>
+                      <ToggleButton value={pair.rightPlayerID}>
+                        {getPlayerName(pair.rightPlayerID)}
+                      </ToggleButton>
+                    </ToggleButtonGroup>
                   </ListItem>
                 )
               })}
             </List>
           )
         })}
-
       </Paper>
     </Container>
   );
