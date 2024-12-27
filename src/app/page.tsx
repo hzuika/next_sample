@@ -48,9 +48,6 @@ export default function Home() {
 
   const getPlayerWinCount = (playerID: string) => {
     if (playerID === GHOST_PLAYER.id) {
-      // Ghost Player の勝数は、対戦相手なしの組み合わせを決める上で重要.
-      // 常に 0 だと勝っていない人が、対戦相手なしになりやすい.
-      // 0 ~ 試合数の間でランダムにすればランダムに決まるはず.
       return 0;
     }
 
@@ -193,11 +190,20 @@ export default function Home() {
   }
 
   const swissDraw = (matches: Match[]) => {
+    const getPlayerWinCountForSwissDraw = (id: string) => {
+      if (id === GHOST_PLAYER.id) {
+        // スイス式を算出するときだけ、Ghost Playerの勝数を0~試合数のランダムな値に変えたほうが良いかもしれない.
+        return 0;
+      } else {
+        return getPlayerWinCount(id);
+      }
+    };
+
     const calcWinCountDiffSum = (match: Match) => {
       let sum = 0;
       for (const pair of match.pairList) {
-        const left = getPlayerWinCount(pair.leftPlayerID);
-        const right = getPlayerWinCount(pair.rightPlayerID);
+        const left = getPlayerWinCountForSwissDraw(pair.leftPlayerID);
+        const right = getPlayerWinCountForSwissDraw(pair.rightPlayerID);
         const diff = Math.abs(left - right);
         sum += diff;
       }
