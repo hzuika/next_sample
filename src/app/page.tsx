@@ -1,5 +1,5 @@
 "use client";
-import { Box, Button, Container, Grid2, List, ListItem, ListSubheader, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, ToggleButton, Typography } from "@mui/material";
+import { Box, Button, Container, Grid2, List, ListItem, ListSubheader, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, ThemeProvider, ToggleButton, Typography, createTheme } from "@mui/material";
 
 import IconButton from '@mui/material/IconButton';
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -9,8 +9,27 @@ import { isPlayers } from "@/lib/isPlayers";
 import { roundRobin } from "@/lib/roundRobin";
 import { isEven, shuffle, makeID } from "@/lib/util";
 import { getSide, getWinnerID } from "@/lib/pair";
+import { indigo } from "@mui/material/colors";
 
 const GHOST_PLAYER: Player = { name: "不在", id: makeID() as PlayerId };
+
+const theme = createTheme({
+  typography: {
+    button: {
+      textTransform: "none"
+    }
+  },
+  components: {
+    MuiTextField: {
+      defaultProps: {
+        variant: "outlined"
+      }
+    }
+  },
+  palette: {
+    primary: indigo,
+  }
+});
 
 export default function Home() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -287,139 +306,143 @@ export default function Home() {
   }, [players]);
 
   return (
-    <Container>
-      <Paper elevation={3} sx={{ p: 5 }}>
-        <Typography>
-          参加者
-        </Typography>
-        <List>
-          {players.map((player, index) => {
-            return (
-              <ListItem key={player.id}>
-                <Typography sx={{ mx: 2 }}>
-                  {index + 1}.
-                </Typography>
-                <TextField
-                  value={player.name}
-                  variant="standard"
-                  onChange={(e) => handleChangePlayerName(player.id, e.target.value)}
-                  autoFocus={(index === (players.length - 1)) && requestAutoFocus}
-                  placeholder="参加者名を入力"
-                  error={player.name.length <= 0}
-                  fullWidth
-                />
-                <IconButton
-                  aria-label="delete player"
-                  onClick={() => handleDeletePlayer(index)}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </ListItem>
-            )
-          })
-          }
-          <ListItem>
-            <Button
-              variant="outlined"
-              onClick={handleAddPlayer}
-              fullWidth
-            >
-              ＋参加者を追加
-            </Button>
-          </ListItem>
-        </List>
+    <ThemeProvider theme={theme}>
+      <Container>
+        <Paper elevation={3} sx={{ p: 5 }}>
+          <Typography>
+            参加者
+          </Typography>
+          <List>
+            {players.map((player, index) => {
+              return (
+                <ListItem key={player.id}>
+                  <Stack spacing={1} direction="row" sx={{ width: "100%" }} alignItems="center">
+                    <Typography>
+                      {index + 1}
+                    </Typography>
+                    <TextField
+                      value={player.name}
+                      onChange={(e) => handleChangePlayerName(player.id, e.target.value)}
+                      autoFocus={(index === (players.length - 1)) && requestAutoFocus}
+                      placeholder="参加者名を入力"
+                      error={player.name.length <= 0}
+                      fullWidth
+                    />
+                    <IconButton
+                      aria-label="delete player"
+                      onClick={() => handleDeletePlayer(index)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Stack>
+                </ListItem>
+              )
+            })
+            }
+            <ListItem>
+              <Button
+                variant="outlined"
+                onClick={handleAddPlayer}
+                fullWidth
+              >
+                ＋参加者を追加
+              </Button>
+            </ListItem>
+          </List>
 
-        <hr />
+          <hr />
 
-        <Typography>
-          順位表
-        </Typography>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>順位</TableCell>
-                <TableCell>名前</TableCell>
-                <TableCell>勝数</TableCell>
-                <TableCell>全点</TableCell>
-                <TableCell>勝点</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rankedPlayers.map((player, index) => {
-                return (
-                  <TableRow key={player.id}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{player.name}</TableCell>
-                    <TableCell>{getPlayerWinCount(player.id)}</TableCell>
-                    <TableCell>{getOpponentWinCount(player.id)}</TableCell>
-                    <TableCell>{getDefeatedOpponentWinCount(player.id)}</TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
-
-        <hr />
-
-        <Typography>
-          対戦表
-        </Typography>
-
-        <Button
-          variant="contained"
-          onClick={handleMakeMatch}
-          fullWidth
-        >
-          組み合わせを決める
-        </Button>
-
-        {matches.map((match, matchIndex) => {
-          return (
-            <List
-              key={match.id}
-              subheader={
-                <ListSubheader component="div" id="match-list-subheader">
-                  {`${matchIndex + 1}試合目`}
-                </ListSubheader>
-              }
-            >
-              {match.pairList.map((pair) => {
-                const PlayerButton = ({ playerID }: { playerID: PlayerId }) => {
+          <Typography>
+            順位表
+          </Typography>
+          <TableContainer>
+            <Table>
+              <caption>全点 = 対戦相手の勝数の合計。勝点 = 勝った対戦相手の勝数の合計。</caption>
+              <TableHead>
+                <TableRow>
+                  <TableCell>順位</TableCell>
+                  <TableCell>名前</TableCell>
+                  <TableCell align="right">勝数</TableCell>
+                  <TableCell align="right">全点</TableCell>
+                  <TableCell align="right">勝点</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {rankedPlayers.map((player, index) => {
                   return (
-                    <ToggleButton color="primary" fullWidth value={playerID} selected={getWinnerID(pair) === playerID} onChange={(_, newWinnerID) => handleWin(newWinnerID, match.id, pair.id)}>
-                      {`${getPlayerName(playerID)} (${getPlayerWinCountUntilMatchID(playerID, match.id)})`}
-                    </ToggleButton>
+                    <TableRow key={player.id}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>{player.name}</TableCell>
+                      <TableCell align="right">{getPlayerWinCount(player.id)}</TableCell>
+                      <TableCell align="right">{getOpponentWinCount(player.id)}</TableCell>
+                      <TableCell align="right">{getDefeatedOpponentWinCount(player.id)}</TableCell>
+                    </TableRow>
                   )
-                };
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
 
-                return (
-                  <ListItem key={pair.id}>
-                    <Box sx={{ width: "100%" }}>
-                      <Grid2 container spacing={2} alignItems="baseline">
-                        <Grid2 size="grow">
-                          <PlayerButton playerID={pair.left} />
-                        </Grid2>
+          <hr />
 
-                        <Grid2 size="auto">
-                          <Typography>
-                            VS
-                          </Typography>
-                        </Grid2>
+          <Typography>
+            対戦表
+          </Typography>
 
-                        <Grid2 size="grow">
-                          <PlayerButton playerID={pair.right} />
+          <Button
+            variant="contained"
+            onClick={handleMakeMatch}
+            fullWidth
+          >
+            組み合わせを決める
+          </Button>
+
+          {matches.map((match, matchIndex) => {
+            return (
+              <List
+                key={match.id}
+                subheader={
+                  <ListSubheader component="div" id="match-list-subheader">
+                    {`${matchIndex + 1}試合目`}
+                  </ListSubheader>
+                }
+              >
+                {match.pairList.map((pair) => {
+                  const PlayerButton = ({ playerID }: { playerID: PlayerId }) => {
+                    return (
+                      <ToggleButton color="primary" fullWidth value={playerID} selected={getWinnerID(pair) === playerID} onChange={(_, newWinnerID) => handleWin(newWinnerID, match.id, pair.id)}>
+                        {`${getPlayerName(playerID)} (${getPlayerWinCountUntilMatchID(playerID, match.id)})`}
+                      </ToggleButton>
+                    )
+                  };
+
+                  return (
+                    <ListItem key={pair.id}>
+                      <Box sx={{ width: "100%" }}>
+                        <Grid2 container spacing={2} alignItems="baseline">
+                          <Grid2 size="grow">
+                            <PlayerButton playerID={pair.left} />
+                          </Grid2>
+
+                          <Grid2 size="auto">
+                            <Typography>
+                              VS
+                            </Typography>
+                          </Grid2>
+
+                          <Grid2 size="grow">
+                            <PlayerButton playerID={pair.right} />
+                          </Grid2>
                         </Grid2>
-                      </Grid2>
-                    </Box>
-                  </ListItem>
-                )
-              })}
-            </List>
-          )
-        })}
-      </Paper>
-    </Container >
+                      </Box>
+                    </ListItem>
+                  )
+                })}
+              </List>
+            )
+          })}
+        </Paper>
+      </Container >
+    </ThemeProvider>
   );
 }
