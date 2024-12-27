@@ -32,8 +32,26 @@ const theme = createTheme({
   }
 });
 
+const tabList = ["対戦表", "順位表"];
 
-;
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+const TabPanel = (props: TabPanelProps) => {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      hidden={value !== index}
+      {...other}
+    >
+      {value === index && children}
+    </div>
+  );
+}
 
 export default function Home() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -250,21 +268,21 @@ export default function Home() {
             </ListItem>
           </List>
 
-          <hr />
-
           <Box sx={{ width: "100%" }}>
-            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-              <Tabs value={tab} onChange={handleChangeTab} centered>
-                <Tab label="対戦表" sx={{ flexGrow: 1 }} />
-                <Tab label="順位表" sx={{ flexGrow: 1 }} />
-              </Tabs>
-            </Box>
+            <Stack spacing={1}>
+              <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                <Tabs value={tab} onChange={handleChangeTab} centered>
+                  <Tab label={tabList[0]} sx={{ flexGrow: 1 }} />
+                  <Tab label={tabList[1]} sx={{ flexGrow: 1 }} />
+                </Tabs>
+              </Box>
+
+              <TabPanel value={tab} index={0}></TabPanel>
+              <TabPanel value={tab} index={1}>
+                <RankTable players={players} matches={matches} />
+              </TabPanel>
+            </Stack>
           </Box>
-
-          <RankTable players={players} matches={matches} />
-
-          <hr />
-
 
           <Typography>
             対戦表
