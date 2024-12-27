@@ -1,11 +1,12 @@
 "use client";
-import { Button, Container, List, ListItem, ListSubheader, Paper, TextField } from "@mui/material";
+import { Button, Container, List, ListItem, ListItemButton, ListSubheader, Paper, TextField } from "@mui/material";
 
 import IconButton from '@mui/material/IconButton';
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useEffect, useState } from "react";
 import localforage from "localforage";
 import { isPlayers } from "@/lib/isPlayers";
+import { roundRobin } from "@/lib/roundRobin";
 
 const makeID = () => {
   return crypto.randomUUID();
@@ -17,25 +18,7 @@ export default function Home() {
   const [newPlayerName, setNewPlayerName] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
-
-  const isExistedPair = (playerID0: string, playerID1: string) => {
-    for (let match of matches) {
-      for (let pair of match.pairList) {
-        if (pair.leftPlayerID === playerID0) {
-          if (pair.rightPlayerID === playerID1) {
-            return true;
-          }
-        }
-
-        if (pair.rightPlayerID === playerID1) {
-          if (pair.leftPlayerID === playerID0) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
-  }
+  const [restMatches, setRestMatches] = useState<Match[]>([]);
 
   const getPlayerById = (id: string) => {
     return players.find((player) => player.id === id);
@@ -54,11 +37,20 @@ export default function Home() {
     }
   }
 
-  const onChangeNewPlayerName = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const getPlayerWinCount = (id: string) => {
+    const player = getPlayerById(id);
+    if (player) {
+      return player.winCount;
+    } else {
+      return 0;
+    }
+  }
+
+  const handleChangeNewPlayerName = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewPlayerName(e.target.value);
   };
 
-  const onAddPlayer = () => {
+  const handleAddPlayer = () => {
     if (!newPlayerName) {
       return;
     }
@@ -74,7 +66,7 @@ export default function Home() {
     setMatches([]);
   };
 
-  const onChangePlayerName = (id: string, name: string) => {
+  const handleChangePlayerName = (id: string, name: string) => {
     setPlayers((players) => {
       const newPlayers = players.map((player) => {
         if (player.id === id) {
@@ -87,7 +79,7 @@ export default function Home() {
     });
   };
 
-  const onDeletePlayer = (index: number) => {
+  const handleDeletePlayer = (index: number) => {
     // TODO: 削除前の確認メッセージを表示する or 削除対象のプレイヤーの試合だけ削除する．
     // 削除対象のプレイヤーの試合だけ削除すると，勝ち数と合わなくなってややこしくなりそうなので，全削除が無難だと思う．
     const newPlayers = [...players];
@@ -96,41 +88,68 @@ export default function Home() {
     setMatches([]);
   };
 
-  const onMakeMatch = () => {
-    const sortedPlayers = players.toSorted((a, b) => {
-      return a.winCount - b.winCount;
-    });
+  const makeAllMatches = () => {
+    return roundRobin(players.length).map((indexMatch) => {
+      const pairList = indexMatch.map((indexPair) => {
+        const pair: Pair = { leftPlayerID: players[indexPair[0]].id, rightPlayerID: players[indexPair[1]].id, id: makeID() };
+        return pair;
+      });
+      const match: Match = { pairList: pairList, id: makeID() };
+      return match;
+    })
+  }
 
-    const newMatch: Match = { pairList: [], id: makeID() };
-
-    while (sortedPlayers.length > 0) {
-      const left = sortedPlayers.shift();
-      if (left) {
-        if (sortedPlayers.length > 0) {
-          let index = 0;
-          for (; index < sortedPlayers.length; ++index) {
-            const rightPlayer = sortedPlayers[index];
-            if (!isExistedPair(left.id, rightPlayer.id)) {
-              const pair: Pair = { leftPlayerID: left.id, rightPlayerID: rightPlayer.id, id: makeID() };
-              newMatch.pairList.push(pair);
-              break;
-            }
-          }
-          sortedPlayers.splice(index, 1);
-        } else {
-          // プレイヤー数が奇数の場合の最後．
-          const pair: Pair = { leftPlayerID: left.id, rightPlayerID: GHOST_PLAYER.id, id: makeID() };
-          newMatch.pairList.push(pair);
-          console.assert(!isExistedPair(pair.leftPlayerID, pair.rightPlayerID));
-          break;
-        }
+  const swissDraw = (matches: Match[]) => {
+    const calcWinCountDiffSum = (match: Match) => {
+      let sum = 0;
+      for (const pair of match.pairList) {
+        const left = getPlayerWinCount(pair.leftPlayerID);
+        const right = getPlayerWinCount(pair.rightPlayerID);
+        const diff = Math.abs(left - right);
+        sum += diff;
       }
+      return sum;
+    };
+
+    const diffSumArray = matches.map(calcWinCountDiffSum);
+    const minIndex = diffSumArray.indexOf(diffSumArray.reduce((a, b) => Math.min(a, b)));
+    return minIndex;
+  }
+
+  const handleMakeMatch = () => {
+    const isNew = matches.length <= 0 && restMatches.length <= 0;
+    const newRestMatches = isNew ? makeAllMatches() : [...restMatches];
+
+    if (newRestMatches.length <= 0) {
+      // 全ての試合を行った.
+      return;
     }
 
-    if (newMatch.pairList.length > 0) {
-      setMatches((matches) => [...matches, newMatch]);
+    let matchIndex = 0;
+    if (isNew) {
+      matchIndex = 0;
+    } else {
+      // ペアの勝ち数の差の合計が最小となるMatchを探す.
+      matchIndex = swissDraw(newRestMatches);
     }
+
+    const newMatch = newRestMatches.splice(matchIndex, 1)[0];
+    setMatches((matches) => [...matches, newMatch]);
+    setRestMatches(newRestMatches);
   };
+
+  const handleWin = (id: string) => {
+    setPlayers((players) => {
+      const newPlayers = players.map((player) => {
+        if (player.id === id) {
+          return { ...player, winCount: player.winCount += 1 };
+        } else {
+          return player;
+        }
+      });
+      return newPlayers;
+    });
+  }
 
   const STORAGE_KEY = "swiss-draw-players";
 
@@ -152,11 +171,11 @@ export default function Home() {
           variant="outlined"
           type="text"
           value={newPlayerName}
-          onChange={onChangeNewPlayerName}
+          onChange={handleChangeNewPlayerName}
         />
         <Button
           variant="contained"
-          onClick={onAddPlayer}
+          onClick={handleAddPlayer}
         >
           追加
         </Button>
@@ -172,11 +191,11 @@ export default function Home() {
                 <TextField
                   value={player.name}
                   variant="standard"
-                  onChange={(e) => onChangePlayerName(player.id, e.target.value)}
+                  onChange={(e) => handleChangePlayerName(player.id, e.target.value)}
                 />
                 <IconButton
                   aria-label="delete"
-                  onClick={() => onDeletePlayer(index)}
+                  onClick={() => handleDeletePlayer(index)}
                 >
                   <DeleteIcon />
                 </IconButton>
@@ -188,7 +207,7 @@ export default function Home() {
 
         <Button
           variant="contained"
-          onClick={onMakeMatch}
+          onClick={handleMakeMatch}
         >
           組み合わせを決める
         </Button>
@@ -206,7 +225,9 @@ export default function Home() {
               {match.pairList.map((pair) => {
                 return (
                   <ListItem key={pair.id}>
-                    {`${getPlayerName(pair.leftPlayerID)} vs ${getPlayerName(pair.rightPlayerID)}`}
+                    <ListItemButton onClick={() => handleWin(pair.leftPlayerID)}>
+                      {`${getPlayerName(pair.leftPlayerID)} vs ${getPlayerName(pair.rightPlayerID)}`}
+                    </ListItemButton>
                   </ListItem>
                 )
               })}
