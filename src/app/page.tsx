@@ -20,20 +20,24 @@ export default function Home() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [restMatches, setRestMatches] = useState<Match[]>([]);
 
+  const isEven = <T,>(array: T[]) => {
+    return (array.length % 2) === 0;
+  };
+
   const clearMatches = () => {
     setMatches([]);
     setRestMatches([]);
   }
 
   const getPlayerById = (id: string) => {
-    return players.find((player) => player.id === id);
+    if (id === GHOST_PLAYER.id) {
+      return GHOST_PLAYER;
+    } else {
+      return players.find((player) => player.id === id);
+    }
   }
 
   const getPlayerName = (id: string) => {
-    if (id === GHOST_PLAYER.id) {
-      return GHOST_PLAYER.name;
-    }
-
     const player = getPlayerById(id);
     if (player) {
       return player.name;
@@ -43,6 +47,13 @@ export default function Home() {
   }
 
   const getPlayerWinCount = (playerID: string) => {
+    if (playerID === GHOST_PLAYER.id) {
+      // Ghost Player の勝数は、対戦相手なしの組み合わせを決める上で重要.
+      // 常に 0 だと勝っていない人が、対戦相手なしになりやすい.
+      // 0 ~ 試合数の間でランダムにすればランダムに決まるはず.
+      return 0;
+    }
+
     let count = 0;
     for (const match of matches) {
       for (const pair of match.pairList) {
@@ -74,7 +85,7 @@ export default function Home() {
     return count;
   }
 
-  // 勝った試合の対戦相手の勝ち数を取得する。
+  // 勝った試合の対戦相手の勝ち数を取得する.
   const getDefeatedOpponentWinCount = (playerID: string) => {
     let count = 0;
     for (const match of matches) {
@@ -97,6 +108,7 @@ export default function Home() {
     return count;
   }
 
+  // 特定の試合より前の勝ち数を取得する。
   const getPlayerWinCountUntilMatchID = (playerID: string, matchID: string) => {
     let count = 0;
     for (const match of matches) {
@@ -155,12 +167,21 @@ export default function Home() {
     clearMatches();
   };
 
+  const shuffle = <T,>(array: T[]) => {
+    return array.toSorted(() => Math.random() - 0.5);
+  }
+
   const makeAllMatches = () => {
-    return roundRobin(players.length).map((indexMatch) => {
+    // 参加者が奇数の場合は、存在しない参加者(Ghost Player)を追加して偶数にする。
+    // Ghost Player を配列の先頭に追加すると、Round Robin で先頭要素が固定される。
+    const shuffledPlayers = shuffle(players);
+    const evenPlayers = (isEven(shuffledPlayers)) ? shuffledPlayers : [GHOST_PLAYER, ...shuffledPlayers];
+
+    return roundRobin(evenPlayers.length).map((indexMatch) => {
       const pairList = indexMatch.map((indexPair) => {
         const pair: Pair = {
-          leftPlayerID: players[indexPair[0]].id,
-          rightPlayerID: players[indexPair[1]].id,
+          leftPlayerID: evenPlayers[indexPair[0]].id,
+          rightPlayerID: evenPlayers[indexPair[1]].id,
           winnerID: "",
           id: makeID()
         };
@@ -206,7 +227,23 @@ export default function Home() {
       matchIndex = swissDraw(newRestMatches);
     }
 
-    const newMatch = newRestMatches.splice(matchIndex, 1)[0];
+    let newMatch = newRestMatches.splice(matchIndex, 1)[0];
+
+    // 対戦相手がいない場合は不戦勝とする.
+    if (!isEven(players)) {
+      newMatch = {
+        ...newMatch,
+        pairList: newMatch.pairList.map((pair) => {
+          if (pair.leftPlayerID === GHOST_PLAYER.id) {
+            pair.winnerID = pair.rightPlayerID;
+          } else if (pair.rightPlayerID === GHOST_PLAYER.id) {
+            pair.winnerID = pair.leftPlayerID;
+          }
+          return pair;
+        })
+      };
+    }
+
     setMatches((matches) => [...matches, newMatch]);
     setRestMatches(newRestMatches);
   };

@@ -15,17 +15,19 @@ export const roundRobin = (length: number) => {
   // ↓
   // 0 2 3
   // 1 5 4
+  //
+  // 0が固定されるので、配列は以下のようにする。
+  // 3, 2
+  // 4, 1
+  // 5, 0 (Ghost Player)
 
   console.assert(length % 2 === 0 && length > 1);
 
   // 連番の配列を作成.
-  const array = [...Array(length)].map((_, index) => index);
+  const indices = [...Array(length)].map((_, index) => index);
 
-  // シャッフル.
-  array.sort(() => Math.random() - 0.5);
-
-  const matchCount = Math.ceil(array.length / 2);
-  const tournamentCount = array.length - 1;
+  const matchCount = Math.ceil(indices.length / 2);
+  const tournamentCount = indices.length - 1;
   const tournament: IndexPair[][] = [];
   for (
     let tournamentIndex = 0;
@@ -34,17 +36,30 @@ export const roundRobin = (length: number) => {
   ) {
     const match: IndexPair[] = [];
     for (let matchIndex = 0; matchIndex < matchCount; ++matchIndex) {
-      const left = array[matchIndex];
-      const right = array[array.length - (matchIndex + 1)];
+      const leftIndex = matchCount + matchIndex;
+      const rightIndex = matchCount - matchIndex - 1;
+
+      if (leftIndex < 0 && leftIndex >= indices.length) {
+        throw new Error(`配列の範囲外アクセス left ${leftIndex} in ${indices}`);
+      }
+      if (rightIndex < 0 && rightIndex >= indices.length) {
+        throw new Error(
+          `配列の範囲外アクセス right ${rightIndex} in ${indices}`
+        );
+      }
+
+      const left = indices[leftIndex];
+      const right = indices[rightIndex];
       match.push([left, right]);
     }
     tournament.push(match);
 
     // 最後の要素を1番目に持ってくる.
-    if (array.length > 3) {
-      const last = array.splice(array.length - 1, 1);
-      array.splice(1, 0, last[0]);
+    if (indices.length > 3) {
+      const last = indices.splice(indices.length - 1, 1);
+      indices.splice(1, 0, last[0]);
     }
   }
+  console.log(tournament);
   return tournament;
 };
