@@ -1,5 +1,5 @@
 "use client";
-import { Button, Container, List, ListItem, ListSubheader, Paper, TextField, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { Box, Button, Container, Grid2, List, ListItem, ListItemText, ListSubheader, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 
 import IconButton from '@mui/material/IconButton';
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -15,10 +15,10 @@ const makeID = () => {
 const GHOST_PLAYER: Player = { name: "不在", id: makeID() };
 
 export default function Home() {
-  const [newPlayerName, setNewPlayerName] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [restMatches, setRestMatches] = useState<Match[]>([]);
+  const [requestAutoFocus, setRequestAutoFocus] = useState(false);
 
   const isEven = <T,>(array: T[]) => {
     return (array.length % 2) === 0;
@@ -123,23 +123,15 @@ export default function Home() {
     return count;
   }
 
-  const handleChangeNewPlayerName = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewPlayerName(e.target.value);
-  };
-
   const handleAddPlayer = () => {
-    if (!newPlayerName) {
-      return;
-    }
-
     const newPlayer: Player = {
-      name: newPlayerName,
+      name: "",
       id: makeID(),
     };
 
     setPlayers((players) => [...players, newPlayer]);
-    setNewPlayerName("");
     clearMatches();
+    setRequestAutoFocus(true);
   };
 
   const handleChangePlayerName = (id: string, name: string) => {
@@ -307,37 +299,27 @@ export default function Home() {
   return (
     <Container>
       <Paper elevation={3} sx={{ p: 5 }}>
-
-        <TextField
-          id="input-name"
-          label="参加者名を入力"
-          variant="outlined"
-          type="text"
-          value={newPlayerName}
-          onChange={handleChangeNewPlayerName}
-        />
-        <Button
-          variant="contained"
-          onClick={handleAddPlayer}
-        >
-          追加
-        </Button>
-
-        <List subheader={
-          <ListSubheader component="div" id="list-subheader">
-            参加者
-          </ListSubheader>
-        }>
+        <Typography>
+          参加者
+        </Typography>
+        <List>
           {players.map((player, index) => {
             return (
               <ListItem key={player.id}>
+                <Typography sx={{ mx: 2 }}>
+                  {index + 1}.
+                </Typography>
                 <TextField
                   value={player.name}
                   variant="standard"
                   onChange={(e) => handleChangePlayerName(player.id, e.target.value)}
+                  autoFocus={(index === (players.length - 1)) && requestAutoFocus}
+                  placeholder="参加者名を入力"
+                  error={player.name.length <= 0}
+                  fullWidth
                 />
                 <IconButton
-                  aria-label="delete"
+                  aria-label="delete player"
                   onClick={() => handleDeletePlayer(index)}
                 >
                   <DeleteIcon />
@@ -346,31 +328,57 @@ export default function Home() {
             )
           })
           }
+          <Button
+            variant="outlined"
+            onClick={handleAddPlayer}
+            fullWidth
+          >
+            ＋参加者を追加
+          </Button>
         </List>
 
         <hr />
 
-        <List subheader={
-          <ListSubheader component="div" id="list-rank">
-            順位
-          </ListSubheader>
-        }>
-          {rankedPlayers.map((player, index) => {
-            return (
-              <ListItem key={player.id}>
-                <Typography>
-                  {`${index + 1}. ${player.name}, 勝数: ${getPlayerWinCount(player.id)}, 全点: ${getOpponentWinCount(player.id)}, 勝点: ${getDefeatedOpponentWinCount(player.id)}`}
-                </Typography>
-              </ListItem>
-            )
-          })}
-        </List>
+        <Typography>
+          順位表
+        </Typography>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>順位</TableCell>
+                <TableCell>名前</TableCell>
+                <TableCell>勝数</TableCell>
+                <TableCell>全点</TableCell>
+                <TableCell>勝点</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rankedPlayers.map((player, index) => {
+                return (
+                  <TableRow key={player.id}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>{player.name}</TableCell>
+                    <TableCell>{getPlayerWinCount(player.id)}</TableCell>
+                    <TableCell>{getOpponentWinCount(player.id)}</TableCell>
+                    <TableCell>{getDefeatedOpponentWinCount(player.id)}</TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
         <hr />
+
+        <Typography>
+          対戦表
+        </Typography>
 
         <Button
           variant="contained"
           onClick={handleMakeMatch}
+          fullWidth
         >
           組み合わせを決める
         </Button>
@@ -386,19 +394,33 @@ export default function Home() {
               }
             >
               {match.pairList.map((pair) => {
+                const PlayerButton = ({ playerID }: { playerID: string }) => {
+                  return (
+                    <ToggleButton color="primary" fullWidth value={playerID} selected={pair.winnerID === playerID} onChange={(_, newWinnerID) => handleWin(newWinnerID, match.id, pair.id)}>
+                      {`${getPlayerName(playerID)} (${getPlayerWinCountUntilMatchID(playerID, match.id)})`}
+                    </ToggleButton>
+                  )
+                };
+
                 return (
                   <ListItem key={pair.id}>
-                    <ToggleButtonGroup color="primary" value={pair.winnerID} exclusive onChange={(_, newWinnerID) => handleWin(newWinnerID, match.id, pair.id)}>
-                      <ToggleButton value={pair.leftPlayerID}>
-                        {`${getPlayerName(pair.leftPlayerID)} (${getPlayerWinCountUntilMatchID(pair.leftPlayerID, match.id)})`}
-                      </ToggleButton>
-                      <Typography>
-                        VS
-                      </Typography>
-                      <ToggleButton value={pair.rightPlayerID}>
-                        {`${getPlayerName(pair.rightPlayerID)} (${getPlayerWinCountUntilMatchID(pair.rightPlayerID, match.id)})`}
-                      </ToggleButton>
-                    </ToggleButtonGroup>
+                    <Box sx={{ width: "100%" }}>
+                      <Grid2 container spacing={2} alignItems="baseline">
+                        <Grid2 size="grow">
+                          <PlayerButton playerID={pair.leftPlayerID} />
+                        </Grid2>
+
+                        <Grid2 size="auto">
+                          <Typography>
+                            VS
+                          </Typography>
+                        </Grid2>
+
+                        <Grid2 size="grow">
+                          <PlayerButton playerID={pair.rightPlayerID} />
+                        </Grid2>
+                      </Grid2>
+                    </Box>
                   </ListItem>
                 )
               })}
