@@ -250,7 +250,18 @@ export default function Home() {
 
     if (isEmpty(newRestMatches)) {
       // 全ての試合を行った.
+      alert("全ての試合が完了しました。");
       return;
+    }
+
+    for (const match of matches) {
+      for (const pair of match.pairList) {
+        if (pair.winner === "none") {
+          // TODO ダイアログにする。
+          alert("前の試合が完了していません。");
+          return;
+        }
+      }
     }
 
     let matchIndex = 0;
@@ -418,14 +429,6 @@ export default function Home() {
             対戦表
           </Typography>
 
-          <Button
-            variant="contained"
-            onClick={handleMakeMatch}
-            fullWidth
-          >
-            組み合わせを決める
-          </Button>
-
           {matches.map((match, matchIndex) => {
             return (
               <List
@@ -470,6 +473,14 @@ export default function Home() {
               </List>
             )
           })}
+
+          <Button
+            variant="contained"
+            onClick={handleMakeMatch}
+            fullWidth
+          >
+            組み合わせを決める
+          </Button>
 
           <div ref={scrollEndRef} />
         </Paper>
