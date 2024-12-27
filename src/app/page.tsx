@@ -55,6 +55,48 @@ export default function Home() {
     return count;
   }
 
+  // 対戦相手の勝ち数を取得する.
+  const getOpponentWinCount = (playerID: string) => {
+    let count = 0;
+    for (const match of matches) {
+      for (const pair of match.pairList) {
+        if (pair.leftPlayerID === playerID) {
+          const opponentID = pair.rightPlayerID;
+          count += getPlayerWinCount(opponentID);
+          break;
+        } else if (pair.rightPlayerID === playerID) {
+          const opponentID = pair.leftPlayerID;
+          count += getPlayerWinCount(opponentID);
+          break;
+        }
+      }
+    }
+    return count;
+  }
+
+  // 勝った試合の対戦相手の勝ち数を取得する。
+  const getDefeatedOpponentWinCount = (playerID: string) => {
+    let count = 0;
+    for (const match of matches) {
+      for (const pair of match.pairList) {
+        if (pair.winnerID === playerID) {
+          if (pair.leftPlayerID === playerID) {
+            const opponentID = pair.rightPlayerID;
+            count += getPlayerWinCount(opponentID);
+            break;
+          } else if (pair.rightPlayerID === playerID) {
+            const opponentID = pair.leftPlayerID;
+            count += getPlayerWinCount(opponentID);
+            break;
+          } else {
+            console.assert(false, "Pairの不正な値");
+          }
+        }
+      }
+    }
+    return count;
+  }
+
   const getPlayerWinCountUntilMatchID = (playerID: string, matchID: string) => {
     let count = 0;
     for (const match of matches) {
@@ -193,6 +235,22 @@ export default function Home() {
     })
   }
 
+  const rankedPlayers = players.toSorted((a, b) => {
+    const winDiff = getPlayerWinCount(b.id) - getPlayerWinCount(a.id);
+    if (winDiff !== 0) {
+      return winDiff;
+    }
+
+    const opponentWinDiff = getOpponentWinCount(b.id) - getOpponentWinCount(a.id);
+    if (opponentWinDiff !== 0) {
+      return opponentWinDiff;
+    }
+
+    const defeatedOpponentWinDiff = getDefeatedOpponentWinCount(b.id) - getDefeatedOpponentWinCount(a.id);
+    return defeatedOpponentWinDiff;
+  })
+
+  // ローカルストレージへの保存.
   const STORAGE_KEY = "swiss-draw-players";
 
   useEffect(() => {
@@ -247,6 +305,26 @@ export default function Home() {
           }
         </List>
 
+        <hr />
+
+        <List subheader={
+          <ListSubheader component="div" id="list-rank">
+            順位
+          </ListSubheader>
+        }>
+          {rankedPlayers.map((player, index) => {
+            return (
+              <ListItem key={player.id}>
+                <Typography>
+                  {`${index + 1}. ${player.name}, 勝数: ${getPlayerWinCount(player.id)}, 全点: ${getOpponentWinCount(player.id)}, 勝点: ${getDefeatedOpponentWinCount(player.id)}`}
+                </Typography>
+              </ListItem>
+            )
+          })}
+        </List>
+
+        <hr />
+
         <Button
           variant="contained"
           onClick={handleMakeMatch}
@@ -285,6 +363,6 @@ export default function Home() {
           )
         })}
       </Paper>
-    </Container>
+    </Container >
   );
 }
