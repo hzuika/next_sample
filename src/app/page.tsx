@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import localforage from "localforage";
 import { isPlayers } from "@/lib/isPlayers";
 import { roundRobin } from "@/lib/roundRobin";
+import { isEven, shuffle } from "@/lib/util";
 
 const makeID = () => {
   return crypto.randomUUID();
@@ -19,10 +20,6 @@ export default function Home() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [restMatches, setRestMatches] = useState<Match[]>([]);
   const [requestAutoFocus, setRequestAutoFocus] = useState(false);
-
-  const isEven = <T,>(array: T[]) => {
-    return (array.length % 2) === 0;
-  };
 
   const clearMatches = () => {
     setMatches([]);
@@ -155,10 +152,6 @@ export default function Home() {
     setPlayers(newPlayers);
     clearMatches();
   };
-
-  const shuffle = <T,>(array: T[]) => {
-    return array.toSorted(() => Math.random() - 0.5);
-  }
 
   const makeAllMatches = () => {
     // 参加者が奇数の場合は、存在しない参加者(Ghost Player)を追加して偶数にする。
