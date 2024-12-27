@@ -8,12 +8,13 @@ import localforage from "localforage";
 import { isPlayers } from "@/lib/isPlayers";
 import { roundRobin } from "@/lib/roundRobin";
 import { isEven, shuffle } from "@/lib/util";
+import { getSide, getWinnerID } from "@/lib/pair";
 
 const makeID = () => {
   return crypto.randomUUID();
 }
 
-const GHOST_PLAYER: Player = { name: "不在", id: makeID() };
+const GHOST_PLAYER: Player = { name: "不在", id: makeID() as PlayerId };
 
 export default function Home() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -26,7 +27,7 @@ export default function Home() {
     setRestMatches([]);
   }
 
-  const getPlayerById = (id: string) => {
+  const getPlayerById = (id: PlayerId) => {
     if (id === GHOST_PLAYER.id) {
       return GHOST_PLAYER;
     } else {
@@ -34,7 +35,7 @@ export default function Home() {
     }
   }
 
-  const getPlayerName = (id: string) => {
+  const getPlayerName = (id: PlayerId) => {
     const player = getPlayerById(id);
     if (player) {
       return player.name;
@@ -43,7 +44,7 @@ export default function Home() {
     }
   }
 
-  const getPlayerWinCount = (playerID: string) => {
+  const getPlayerWinCount = (playerID: PlayerId) => {
     if (playerID === GHOST_PLAYER.id) {
       return 0;
     }
@@ -51,7 +52,7 @@ export default function Home() {
     let count = 0;
     for (const match of matches) {
       for (const pair of match.pairList) {
-        if (pair.winnerID === playerID) {
+        if (getWinnerID(pair) === playerID) {
           count += 1;
           break;
         }
@@ -61,16 +62,16 @@ export default function Home() {
   }
 
   // 対戦相手の勝ち数を取得する.
-  const getOpponentWinCount = (playerID: string) => {
+  const getOpponentWinCount = (id: PlayerId) => {
     let count = 0;
     for (const match of matches) {
       for (const pair of match.pairList) {
-        if (pair.leftPlayerID === playerID) {
-          const opponentID = pair.rightPlayerID;
+        if (pair.left === id) {
+          const opponentID = pair.right;
           count += getPlayerWinCount(opponentID);
           break;
-        } else if (pair.rightPlayerID === playerID) {
-          const opponentID = pair.leftPlayerID;
+        } else if (pair.right === id) {
+          const opponentID = pair.left;
           count += getPlayerWinCount(opponentID);
           break;
         }
@@ -84,13 +85,13 @@ export default function Home() {
     let count = 0;
     for (const match of matches) {
       for (const pair of match.pairList) {
-        if (pair.winnerID === playerID) {
-          if (pair.leftPlayerID === playerID) {
-            const opponentID = pair.rightPlayerID;
+        if (getWinnerID(pair) === playerID) {
+          if (pair.left === playerID) {
+            const opponentID = pair.right;
             count += getPlayerWinCount(opponentID);
             break;
-          } else if (pair.rightPlayerID === playerID) {
-            const opponentID = pair.leftPlayerID;
+          } else if (pair.right === playerID) {
+            const opponentID = pair.left;
             count += getPlayerWinCount(opponentID);
             break;
           } else {
@@ -111,7 +112,7 @@ export default function Home() {
       }
 
       for (const pair of match.pairList) {
-        if (pair.winnerID === playerID) {
+        if (getWinnerID(pair) === playerID) {
           count += 1;
           break;
         }
@@ -123,7 +124,7 @@ export default function Home() {
   const handleAddPlayer = () => {
     const newPlayer: Player = {
       name: "",
-      id: makeID(),
+      id: makeID() as PlayerId,
     };
 
     setPlayers((players) => [...players, newPlayer]);
@@ -162,20 +163,20 @@ export default function Home() {
     return roundRobin(evenPlayers.length).map((indexMatch) => {
       const pairList = indexMatch.map((indexPair) => {
         const pair: Pair = {
-          leftPlayerID: evenPlayers[indexPair[0]].id,
-          rightPlayerID: evenPlayers[indexPair[1]].id,
-          winnerID: "",
-          id: makeID()
+          left: evenPlayers[indexPair[0]].id,
+          right: evenPlayers[indexPair[1]].id,
+          winner: "none",
+          id: makeID() as PairId
         };
         return pair;
       });
-      const match: Match = { pairList: pairList, id: makeID() };
+      const match: Match = { pairList: pairList, id: makeID() as MatchId };
       return match;
     })
   }
 
   const swissDraw = (matches: Match[]) => {
-    const getPlayerWinCountForSwissDraw = (id: string) => {
+    const getPlayerWinCountForSwissDraw = (id: PlayerId) => {
       if (id === GHOST_PLAYER.id) {
         // スイス式を算出するときだけ、Ghost Playerの勝数を0~試合数のランダムな値に変えたほうが良いかもしれない.
         return 0;
@@ -187,8 +188,8 @@ export default function Home() {
     const calcWinCountDiffSum = (match: Match) => {
       let sum = 0;
       for (const pair of match.pairList) {
-        const left = getPlayerWinCountForSwissDraw(pair.leftPlayerID);
-        const right = getPlayerWinCountForSwissDraw(pair.rightPlayerID);
+        const left = getPlayerWinCountForSwissDraw(pair.left);
+        const right = getPlayerWinCountForSwissDraw(pair.right);
         const diff = Math.abs(left - right);
         sum += diff;
       }
@@ -225,10 +226,10 @@ export default function Home() {
       newMatch = {
         ...newMatch,
         pairList: newMatch.pairList.map((pair) => {
-          if (pair.leftPlayerID === GHOST_PLAYER.id) {
-            pair.winnerID = pair.rightPlayerID;
-          } else if (pair.rightPlayerID === GHOST_PLAYER.id) {
-            pair.winnerID = pair.leftPlayerID;
+          if (pair.left === GHOST_PLAYER.id) {
+            pair.winner = "right";
+          } else if (pair.right === GHOST_PLAYER.id) {
+            pair.winner = "left";
           }
           return pair;
         })
@@ -240,17 +241,17 @@ export default function Home() {
   };
 
   const handleWin = (
-    newWinnerID: string,
-    matchID: string,
-    pairID: string,
+    newWinnerID: PlayerId,
+    matchID: MatchId,
+    pairID: PairId,
   ) => {
-    setMatches((prevMatches) => {
+    setMatches((prevMatches): Match[] => {
       return prevMatches.map((match) => {
         if (match.id === matchID) {
           return {
             ...match, pairList: match.pairList.map((pair) => {
               if (pair.id === pairID) {
-                return { ...pair, winnerID: newWinnerID };
+                return { ...pair, winner: getSide(pair, newWinnerID) };
               } else {
                 return pair;
               }
@@ -389,9 +390,9 @@ export default function Home() {
               }
             >
               {match.pairList.map((pair) => {
-                const PlayerButton = ({ playerID }: { playerID: string }) => {
+                const PlayerButton = ({ playerID }: { playerID: PlayerId }) => {
                   return (
-                    <ToggleButton color="primary" fullWidth value={playerID} selected={pair.winnerID === playerID} onChange={(_, newWinnerID) => handleWin(newWinnerID, match.id, pair.id)}>
+                    <ToggleButton color="primary" fullWidth value={playerID} selected={getWinnerID(pair) === playerID} onChange={(_, newWinnerID) => handleWin(newWinnerID, match.id, pair.id)}>
                       {`${getPlayerName(playerID)} (${getPlayerWinCountUntilMatchID(playerID, match.id)})`}
                     </ToggleButton>
                   )
@@ -402,7 +403,7 @@ export default function Home() {
                     <Box sx={{ width: "100%" }}>
                       <Grid2 container spacing={2} alignItems="baseline">
                         <Grid2 size="grow">
-                          <PlayerButton playerID={pair.leftPlayerID} />
+                          <PlayerButton playerID={pair.left} />
                         </Grid2>
 
                         <Grid2 size="auto">
@@ -412,7 +413,7 @@ export default function Home() {
                         </Grid2>
 
                         <Grid2 size="grow">
-                          <PlayerButton playerID={pair.rightPlayerID} />
+                          <PlayerButton playerID={pair.right} />
                         </Grid2>
                       </Grid2>
                     </Box>

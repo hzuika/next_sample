@@ -1,4 +1,5 @@
+declare type PlayerId = Id<string, "Player">;
 declare type Player = {
   name: string;
-  readonly id: string;
+  readonly id: PlayerId;
 };
