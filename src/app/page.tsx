@@ -3,7 +3,7 @@ import { Box, Button, Container, Grid2, List, ListItem, ListSubheader, Paper, St
 
 import IconButton from '@mui/material/IconButton';
 import DeleteIcon from "@mui/icons-material/Delete";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import localforage from "localforage";
 import { isPlayers } from "@/lib/isPlayers";
 import { roundRobin } from "@/lib/roundRobin";
@@ -36,6 +36,13 @@ export default function Home() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [restMatches, setRestMatches] = useState<Match[]>([]);
   const [requestAutoFocus, setRequestAutoFocus] = useState(false);
+
+  const [requestScrollEnd, setRequestScrollEnd] = useState(true);
+  const scrollEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [requestScrollEnd]);
 
   const clearMatches = () => {
     setMatches([]);
@@ -273,6 +280,7 @@ export default function Home() {
 
     setMatches((matches) => [...matches, newMatch]);
     setRestMatches(newRestMatches);
+    setRequestScrollEnd((prev) => !prev)
   };
 
   const handleWin = (
@@ -462,6 +470,8 @@ export default function Home() {
               </List>
             )
           })}
+
+          <div ref={scrollEndRef} />
         </Paper>
       </Container >
     </ThemeProvider>
