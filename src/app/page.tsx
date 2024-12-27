@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import localforage from "localforage";
 import { isPlayers } from "@/lib/isPlayers";
 import { roundRobin } from "@/lib/roundRobin";
-import { isEven, shuffle, makeId } from "@/lib/util";
+import { isEven, shuffle, makeId, isEmpty } from "@/lib/util";
 import { getOpponentId, getSide, getWinnerId } from "@/lib/pair";
 import { indigo } from "@mui/material/colors";
 
@@ -210,10 +210,10 @@ export default function Home() {
   }
 
   const handleMakeMatch = () => {
-    const isNew = matches.length <= 0 && restMatches.length <= 0;
+    const isNew = isEmpty(matches) && isEmpty(restMatches);
     const newRestMatches = isNew ? makeAllMatches() : [...restMatches];
 
-    if (newRestMatches.length <= 0) {
+    if (isEmpty(newRestMatches)) {
       // 全ての試合を行った.
       return;
     }
@@ -317,7 +317,7 @@ export default function Home() {
                       onChange={(e) => handleChangePlayerName(player.id, e.target.value)}
                       autoFocus={(index === (players.length - 1)) && requestAutoFocus}
                       placeholder="参加者名を入力"
-                      error={player.name.length <= 0}
+                      error={isEmpty(player.name)}
                       fullWidth
                     />
                     <IconButton

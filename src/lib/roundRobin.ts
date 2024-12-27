@@ -60,6 +60,5 @@ export const roundRobin = (length: number) => {
       indices.splice(1, 0, last[0]);
     }
   }
-  console.log(tournament);
   return tournament;
 };

@@ -6,6 +6,10 @@ export const shuffle = <T>(array: T[]) => {
   return array.toSorted(() => Math.random() - 0.5);
 };
 
+export const isEmpty = (array: { length: number }) => {
+  return array.length <= 0;
+};
+
 export const makeId = () => {
   return crypto.randomUUID();
 };
