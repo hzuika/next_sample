@@ -13,3 +13,7 @@ export const isEmpty = (array: { length: number }) => {
 export const makeId = () => {
   return crypto.randomUUID();
 };
+
+export const makeSequentialArray = (length: number) => {
+  return [...Array(length)].map((_, index) => index);
+};

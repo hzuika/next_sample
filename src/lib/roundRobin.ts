@@ -1,3 +1,5 @@
+import { makeSequentialArray } from "./util";
+
 // 配列の要素数を引数にとって、Round Robin Tournament の組み合わせの配列を返す.
 export const roundRobin = (length: number) => {
   // Round Robin Tournament.
@@ -24,7 +26,7 @@ export const roundRobin = (length: number) => {
   console.assert(length % 2 === 0 && length > 1);
 
   // 連番の配列を作成.
-  const indices = [...Array(length)].map((_, index) => index);
+  const indices = makeSequentialArray(length);
 
   const matchCount = Math.ceil(indices.length / 2);
   const tournamentCount = indices.length - 1;

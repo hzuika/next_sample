@@ -31,9 +31,6 @@ export const RankTable = ({ players: players, matches: matches }: { players: Pla
 
     return (
         <Box>
-            <Typography>
-                順位表
-            </Typography>
             <TableContainer>
                 <Table>
                     <caption>全点 = 対戦相手の勝数の合計。勝点 = 勝った対戦相手の勝数の合計。</caption>

@@ -1,6 +1,29 @@
 import { getOpponentId, getWinnerId } from "./pair";
 import { GHOST_PLAYER } from "./player";
 
+const isPair = (arg: unknown): arg is Pair => {
+  const record = arg as Record<keyof Pair, unknown>;
+  return (
+    typeof record.id === "string" &&
+    typeof record.left === "string" &&
+    typeof record.right === "string" &&
+    typeof record.winner === "string"
+  );
+};
+
+const isPairs = (arg: unknown): arg is Pair[] => {
+  return Array.isArray(arg) && arg.every(isPair);
+};
+
+const isMatch = (arg: unknown): arg is Match => {
+  const record = arg as Record<keyof Match, unknown>;
+  return typeof record.id === "string" && isPairs(record.pairList);
+};
+
+export const isMatches = (arg: unknown): arg is Match[] => {
+  return Array.isArray(arg) && arg.every(isMatch);
+};
+
 export const getPlayerWinCountWithGhost = (
   playerId: PlayerId,
   matches: Match[]
