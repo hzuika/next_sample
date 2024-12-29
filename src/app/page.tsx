@@ -13,6 +13,7 @@ import { indigo } from "@mui/material/colors";
 import { GHOST_PLAYER, getHelperTextForNameValidation, getPlayerName, isValidPlayerName } from "@/lib/player";
 import { getPlayerWinCountUntilMatchId, swissDraw } from "@/lib/match";
 import { RankTable } from "@/components/rankTable";
+import { CircleOutlined, CloseOutlined } from "@mui/icons-material";
 
 const theme = createTheme({
   typography: {
@@ -299,7 +300,19 @@ export default function Home() {
                         const PlayerButton = ({ playerId: playerId }: { playerId: PlayerId }) => {
                           return (
                             <ToggleButton color="primary" fullWidth value={playerId} selected={getWinnerId(pair) === playerId} onChange={(_, newWinnerId) => handleWin(newWinnerId, match.id, pair.id)}>
-                              {`${(pair.winner === "none" ? "" : (getWinnerId(pair) === playerId) ? "◯" : "✗")} ${getPlayerName(playerId, [...players, GHOST_PLAYER])} (${getPlayerWinCountUntilMatchId(playerId, match.id, matches)})`}
+                              <Stack direction="column" alignItems="center">
+                                <Stack direction="row" alignItems="center" spacing={1}>
+                                  {
+                                    (pair.winner === "none") ? <></> : (getWinnerId(pair) === playerId) ? <CircleOutlined /> : <CloseOutlined />
+                                  }
+                                  <Typography variant="h5" component="div">
+                                    {`${getPlayerName(playerId, [...players, GHOST_PLAYER])}`}
+                                  </Typography>
+                                </Stack>
+                                <Typography variant="subtitle1" component="div">
+                                  勝数：{getPlayerWinCountUntilMatchId(playerId, match.id, matches)}
+                                </Typography>
+                              </Stack>
                             </ToggleButton>
                           )
                         };
