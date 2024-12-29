@@ -1,5 +1,5 @@
 import { getDefeatedOpponentWinCount, getOpponentWinCount, getPlayerWinCountWithGhost } from "@/lib/match";
-import { Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
+import { Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
 
 type CellInfo = {
     readonly name: string,
